@@ -1,5 +1,5 @@
-Xenasan (NASA NEX)
-==================
+NEXutils
+========
 Retrieve [NASA NEX](https://aws.amazon.com/nasa/nex/) public data sets from S3.
 This script will pull down NetCDF files for climate variables and generate
 annual aggregations stored as compressed GeoTIFF.
@@ -8,14 +8,14 @@ Usage
 -----
 Provide a S3 prefix as the only mandatory command line argument such as:
 
-    ./xenasan.rkt NEX-DCP30/NEX-quartile/rcp85/mon/atmos/tasmax
+    ./nexutil.rkt NEX-DCP30/NEX-quartile/rcp85/mon/atmos/tasmax
 
 All of the available S3 objects corresponding to that prefix will be
 fetched. Depending on the prefix, this will potentially write quite a lot of data to
 `/tmp` so be sure you are not starved for disk space. Use the `--datadir` flag
 to specify an alternate directory for download.
 
-See `./xenasan.rkt --help` for all available command line flags.
+See `./nexutil.rkt --help` for all available command line flags.
 
 Installation
 ------------
