@@ -8,6 +8,7 @@
          racket/list
          racket/path
          racket/port
+         racket/string
          racket/system
          racket/async-channel
          net/url
@@ -28,12 +29,22 @@
     ((compose1 path/param-path last url-path) path)
     (last (explode-path path))))
 
-(define (raster->geotiff in out)
+(define (raster->geotiff src [dest (path-replace-suffix src ".tif")])
   (system/display
     (~a "gdal_translate"
         "-of GTiff -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=1 -co ZLEVEL=6"
-        in out
-        #:separator " ")))
+        src dest
+        #:separator " "))
+  dest)
+
+(define (monthly->annual src [dest (path-replace-suffix src "_ann.nc")])
+  (system/display (format "ncra -OD 1 -L6 -d time,,,12,12 --mro ~a ~a" src dest))
+  dest)
+
+(define (concat-netcdf src-list
+                       [dest (path-replace-suffix (last src-list) "_all.nc")])
+  (system/display (format "ncrcat -L6 ~a ~a" (string-join src-list " ") dest))
+  dest)
 
 (define (monthly->annual in out)
   (system/display (format "ncra -OD 1 -d time,,,12,12 --mro ~a ~a" in out)))
