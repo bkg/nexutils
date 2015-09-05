@@ -46,13 +46,24 @@
   (system/display (format "ncrcat -L6 ~a ~a" (string-join src-list " ") dest))
   dest)
 
-(define (monthly->annual in out)
-  (system/display (format "ncra -OD 1 -d time,,,12,12 --mro ~a ~a" in out)))
-
 (define (find-input-files datadir)
   (find-files
     (λ (path) (equal? (filename-extension path) #"nc"))
     datadir))
+
+(define (trim-dates str) (string-trim str #px"\\d{6}-.*" #:left? #f))
+
+(define (group-by lst [comparator identity])
+  ; Create nested list of path strings grouped by comparison.
+  (foldr (lambda (s acc)
+           (cond
+             [(and (not (null? acc))
+                   (equal? (comparator s) (comparator (caar acc))))
+              (cons (cons s (car acc))
+                    (cdr acc))]
+             [else (cons (list s) acc)]))
+         '()
+         lst))
 
 (define (url->output url [out (current-output-port)])
   (call/input-url
@@ -81,31 +92,34 @@
     (for/list ([key (in-list s3-keys)])
       (combine-url/relative bucket-url key))))
 
-(define (run-task item)
-  (let* ([netcdf-path (path-replace-suffix item "_ann.nc")]
-         [geotiff-path (path-replace-suffix netcdf-path ".tif")])
-      (begin 
-        (monthly->annual item netcdf-path)
-        (raster->geotiff netcdf-path geotiff-path))))
-
-(define (make-worker-thread id channel)
+(define (make-worker id work-channel result-channel)
   (define (loop)
-    (let ([item (async-channel-get channel)])
-      (case item
-        [(DONE) (printft "Thread ~a done" id)]
-        [else
-          (printft "Thread ~a processing item: ~a" id item)
-          (run-task item)
-          (loop)])))
+    (let ([task (async-channel-get work-channel)])
+      (cond
+        [(procedure? task)
+         (printft "Thread ~a processing item: ~a" id task)
+         (async-channel-put result-channel (task))
+         (loop)]
+        [else (printft "Thread ~a done" id)])))
   (thread loop))
 
+(define (pool-map proc tasks #:workers [n 3])
+  (let* ([work-channel (make-async-channel n)]
+         [result-channel (make-async-channel)]
+         [workers (for/list ([id (in-range n)])
+                    (make-worker id work-channel result-channel))])
+    (for ([task (in-list tasks)])
+      (async-channel-put work-channel (lambda () (proc task))))
+    (for ([worker (in-list workers)])
+      (async-channel-put work-channel 'stop))
+    (for/list ([task-num (in-range (length tasks))])
+      (async-channel-get result-channel))))
+
 (define (run-workers tasks nworkers)
-  (let* ([work-channel (make-async-channel nworkers)]
-         [workers (for/list ([id (in-range nworkers)])
-                    (make-worker-thread id work-channel))])
-    (for ([task (in-list (append tasks (make-list nworkers 'DONE)))])
-      (async-channel-put work-channel task))
-    (for-each thread-wait workers)))
+    (define (group-paths paths) (group-by (map path->string paths) trim-dates))
+    (pool-map concat-netcdf
+              (group-paths (pool-map monthly->annual tasks #:workers nworkers))
+              #:workers 2))
 
 (define (put-gdal-env path)
   (let ([dirs (hash 'PATH "bin"
