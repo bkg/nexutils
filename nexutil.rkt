@@ -48,7 +48,7 @@
 
 (define (find-input-files datadir)
   (find-files
-    (λ (path) (equal? (filename-extension path) #"nc"))
+    (λ (path) (regexp-match? #px"\\d{6}-\\d{6}\\.nc$" path))
     datadir))
 
 (define (trim-dates str) (string-trim str #px"\\d{6}-.*" #:left? #f))
