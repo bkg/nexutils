@@ -14,12 +14,14 @@
          xml
          xml/path)
 
+(define dry-run? (make-parameter #f))
 (define verbose? (make-parameter #f))
 
 (define (system/display cmd)
-  (printft cmd)
-  (unless (system cmd)
-    (exit 1)))
+  (if (dry-run?)
+    (displayln cmd)
+    (unless (system cmd)
+      (exit 1))))
 
 (define (basename path)
   (if (url? path)
@@ -124,13 +126,14 @@
   (define prefix
     (command-line
       #:once-each
-      [("-d" "--datadir") dir "Data directory" 
+      [("-d" "--datadir") dir "Data directory"
        (set! datadir (expand-user-path dir))]
-      [("-g" "--gdalbase") gdalbase "GDAL base path" 
+      [("-g" "--gdalbase") gdalbase "GDAL base path"
        (put-gdal-env (expand-user-path gdalbase))]
-      [("-j") thread-count "Threads" (set! nthreads thread-count)]
+      [("-n" "--dry-run") "Dry run" (dry-run? #t)]
+      [("-j" "--jobs") thread-count "Threads" (set! nthreads thread-count)]
       [("-s" "--skip-download") "Skip downloading" (set! skip-download? #t)]
-      [("-v") "Verbose mode" (verbose? #t)]
+      [("-v" "--verbose") "Verbose mode" (verbose? #t)]
       #:args
       (prefix) prefix))
   (run-workers (if skip-download?
