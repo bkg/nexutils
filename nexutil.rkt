@@ -18,31 +18,33 @@
 (define dry-run? (make-parameter #f))
 (define verbose? (make-parameter #f))
 
-(define (system/display . cmd+args)
-  (let ([cmd (apply ~a cmd+args #:separator " ")])
-    (printft cmd)
-    (unless (dry-run?)
-      (unless (system cmd)
-        (exit 1)))
-    (last cmd+args)))
+(define (sh cmd)
+  (printft cmd)
+  (unless (dry-run?)
+    (unless (system cmd)
+      (exit 1))))
+
+(define (system/out . cmd+args)
+  (and (sh (apply ~a cmd+args #:separator " "))
+       (last cmd+args)))
 
 (define (basename path)
   (if (url? path)
     ((compose1 path/param-path last url-path) path)
-    (last (explode-path path))))
+    (file-name-from-path path)))
 
 (define (raster->geotiff src [dest (path-replace-suffix src ".tif")])
-  (system/display
+  (system/out
     "gdal_translate"
     "-of GTiff -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=1 -co ZLEVEL=6"
     src dest))
 
 (define (monthly->annual src [dest (path-replace-suffix src "_ann.nc")])
-  (system/display "ncra -OD 1 -L6 -d time,,,12,12 --mro" src dest))
+  (system/out "ncra -OD 1 -L6 -d time,,,12,12 --mro" src dest))
 
 (define (concat-netcdf src-list
                        [dest (path-replace-suffix (last src-list) "_all.nc")])
-  (system/display "ncrcat -L6" (string-join src-list " ") dest))
+  (system/out "ncrcat -L6" (string-join src-list " ") dest))
 
 (define (find-input-files datadir)
   (find-files
