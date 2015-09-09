@@ -55,10 +55,10 @@
 
 (define (group-by extract-key lst [same? equal?])
   ; Create nested list of path strings grouped by comparison.
-  (foldr (lambda (s acc)
+  (foldr (λ (s acc)
            (cond
-             [(and (pair? acc)
-                   (apply same? (map extract-key (list s (caar acc)))))
+             [(null? acc) (list (list s))]
+             [(apply same? (map extract-key (list s (caar acc))))
               (cons (cons s (car acc))
                     (cdr acc))]
              [else (cons (list s) acc)]))
