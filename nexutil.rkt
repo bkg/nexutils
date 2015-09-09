@@ -53,17 +53,17 @@
 
 (define (trim-dates str) (string-trim str #px"\\d{6}-.*" #:left? #f))
 
-(define (group-by lst [comparator identity])
+(define (group-by extract-key lst [same? equal?])
   ; Create nested list of path strings grouped by comparison.
   (foldr (lambda (s acc)
            (cond
-             [(and (not (null? acc))
-                   (equal? (comparator s) (comparator (caar acc))))
+             [(and (pair? acc)
+                   (apply same? (map extract-key (list s (caar acc)))))
               (cons (cons s (car acc))
                     (cdr acc))]
              [else (cons (list s) acc)]))
          '()
-         lst))
+         (sort lst string<?)))
 
 (define (url->output url [out (current-output-port)])
   (call/input-url
@@ -116,7 +116,7 @@
       (async-channel-get result-channel))))
 
 (define (run-workers tasks nworkers)
-    (define (group-paths paths) (group-by (map path->string paths) trim-dates))
+    (define (group-paths paths) (group-by trim-dates (map path->string paths)))
     (pool-map concat-netcdf
               (group-paths (pool-map monthly->annual tasks #:workers nworkers))
               #:workers 2))
@@ -164,7 +164,6 @@
   (run-workers (if skip-download?
                  (find-input-files datadir)
                  (for/list ([data-url (in-list (list-bucket-urls prefix))])
-                   #|(url->file data-url datadir)))|#
                    (let ([out-path (build-path datadir (basename data-url))])
                      (url->file data-url out-path)
                      out-path)))
