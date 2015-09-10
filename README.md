@@ -1,8 +1,9 @@
 NEXutils
 ========
-Retrieve [NASA NEX](https://aws.amazon.com/nasa/nex/) public data sets from S3.
-This script will pull down NetCDF files for climate variables and generate
-annual aggregations stored as compressed GeoTIFF.
+Retrieve NASA Earth Exchange (NEX) downscaled climate projections
+[NEX-DCP30](https://aws.amazon.com/nasa/nex/) from Amazon public data sets in
+S3. This script will pull down NetCDF and generate annual aggregations stored
+as compressed GeoTIFF.
 
 Usage
 -----
