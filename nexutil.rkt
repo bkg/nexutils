@@ -116,10 +116,11 @@
       (async-channel-get result-channel))))
 
 (define (run-workers tasks nworkers)
-    (define (group-paths paths) (group-by trim-dates (map path->string paths)))
-    (pool-map concat-netcdf
-              (group-paths (pool-map monthly->annual tasks #:workers nworkers))
-              #:workers 2))
+  (define (group-paths paths) (group-by trim-dates (map path->string paths)))
+  (let ([ncfiles (pool-map concat-netcdf
+                           (group-paths (pool-map monthly->annual tasks #:workers nworkers))
+                           #:workers 2)])
+    (pool-map raster->geotiff ncfiles #:workers nworkers)))
 
 (define (put-gdal-env path)
   (let ([dirs (hash 'PATH "bin"
