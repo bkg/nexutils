@@ -46,6 +46,20 @@
                        [dest (path-replace-suffix (last src-list) "_all.nc")])
   (system/out "ncrcat -L6" (string-join src-list " ") dest))
 
+(define (gdalinfo path)
+  (with-output-to-string
+    (thunk (sh (~a "gdalinfo " path)))))
+
+(define (list-bands path)
+  (range 1 (add1 (length (regexp-match* "Band [0-9]+" (gdalinfo path))))))
+
+(define (render-png src #:palette [p "haxby.txt"])
+  (let ([nbands (length (list-bands src))])
+    (for/list ([nband (in-range 1 (add1 nbands))])
+      (system/out "gdaldem color-relief -of PNG -alpha -b"
+                  nband src p
+                  (path-replace-suffix src (format "_b~a.png" nband))))))
+
 (define (find-input-files datadir)
   (find-files
     (λ (path) (regexp-match? #px"\\d{6}-\\d{6}\\.nc$" path))
