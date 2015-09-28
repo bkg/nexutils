@@ -1,7 +1,9 @@
 #!/usr/bin/env racket
 #lang racket/base
 
-(require racket/file
+(require racket/class
+         racket/draw
+         racket/file
          racket/format
          racket/function
          (only-in racket/future processor-count)
@@ -13,10 +15,17 @@
          racket/async-channel
          net/url
          xml
-         xml/path)
+         xml/path
+         "image.rkt")
 
 (define dry-run? (make-parameter #f))
 (define verbose? (make-parameter #f))
+
+(struct raster (path subdataset bands))
+
+(define (make-raster path)
+  (let ([sds (subdataset path)])
+    (raster path sds (list-bands sds))))
 
 (define (sh cmd)
   (printft cmd)
@@ -52,6 +61,26 @@
 
 (define (list-bands path)
   (range 1 (add1 (length (regexp-match* "Band [0-9]+" (gdalinfo path))))))
+
+(define (subdataset path)
+  (let ([sds (regexp-match #px"SUBDATASET_1_NAME=([^\\s]+)" (gdalinfo path))])
+    (if sds (cadr sds) path)))
+
+(define (scale-byteraster src [nband 1])
+  (system/out "gdal_translate -of PNG -ot Byte -scale -a_nodata 255 -b"
+              nband
+              (raster-subdataset src)
+              (path-replace-suffix (raster-path src) (format "_b~a.png" nband))))
+
+(define (make-color-bitmaps src)
+  (for/list ([nband (in-list (raster-bands src))])
+    (let* ([png-path (scale-byteraster src nband)]
+           [bitmap (read-bitmap png-path)]
+           [dest (path-replace-suffix png-path "c.png")])
+      (colorize-bitmap bitmap)
+      (printft "Writing ~a ~a" nband dest)
+      (send bitmap save-file dest 'png)
+      dest)))
 
 (define (render-png src #:palette [p "haxby.txt"])
   (let ([nbands (length (list-bands src))])
