@@ -46,7 +46,8 @@
   (system/out
     "gdal_translate"
     "-of GTiff -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=1 -co ZLEVEL=6"
-    src dest))
+    (subdataset src)
+    dest))
 
 (define (monthly->annual src [dest (path-replace-suffix src "_ann.nc")])
   (system/out "ncra -OD 1 -L6 -d time,,,12,12 --mro" src dest))
