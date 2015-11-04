@@ -118,7 +118,7 @@
 ;; Arguments:
 ;; url - URL
 ;; path - filename string or directory for writing to
-(define (url->file url path)
+(define (download-file! url path)
   (with-output-to-file
     (if (directory-exists? path)
       (build-path path (basename url))
@@ -209,6 +209,6 @@
                  (find-input-files datadir)
                  (for/list ([data-url (in-list (list-bucket-urls prefix))])
                    (let ([out-path (build-path datadir (basename data-url))])
-                     (url->file data-url out-path)
+                     (download-file! data-url out-path)
                      out-path)))
                nthreads))
