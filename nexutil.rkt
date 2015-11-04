@@ -135,6 +135,12 @@
     (for/list ([key (in-list s3-keys)])
       (combine-url/relative bucket-url key))))
 
+(define (fetch-prefix prefix dir)
+  (for/list ([data-url (in-list (list-bucket-urls prefix))])
+    (let ([out-path (build-path dir (basename data-url))])
+      (download-file! data-url out-path)
+      out-path)))
+
 (define (make-worker id work-channel result-channel)
   (define (loop)
     (let ([task (async-channel-get work-channel)])
@@ -206,10 +212,6 @@
       [("-v" "--verbose") "Verbose mode" (verbose? #t)]
       #:args
       (prefix) prefix))
-  (run-workers (if skip-download?
-                 (find-input-files datadir)
-                 (for/list ([data-url (in-list (list-bucket-urls prefix))])
-                   (let ([out-path (build-path datadir (basename data-url))])
-                     (download-file! data-url out-path)
-                     out-path)))
-               nthreads))
+  (unless skip-download?
+    (fetch-prefix prefix datadir))
+  (run-workers (find-input-files datadir) nthreads))
