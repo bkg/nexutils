@@ -60,7 +60,7 @@
     (thunk (sh (~a "gdalinfo " path)))))
 
 (define (list-bands path)
-  (range 1 (add1 (length (regexp-match* "Band [0-9]+" (gdalinfo path))))))
+  (range 1 (add1 (length (regexp-match* #rx"Band [0-9]+" (gdalinfo path))))))
 
 (define (subdataset path)
   (let ([sds (regexp-match #px"SUBDATASET_1_NAME=([^\\s]+)" (gdalinfo path))])
