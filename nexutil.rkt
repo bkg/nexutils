@@ -200,7 +200,8 @@
       [("-g" "--gdalbase") gdalbase "GDAL base path"
        (put-gdal-env (expand-user-path gdalbase))]
       [("-n" "--dry-run") "Dry run" (dry-run? #t)]
-      [("-j" "--jobs") thread-count "Threads" (set! nthreads thread-count)]
+      [("-j" "--jobs") thread-count "Threads"
+       (set! nthreads (string->number thread-count))]
       [("-s" "--skip-download") "Skip downloading" (set! skip-download? #t)]
       [("-v" "--verbose") "Verbose mode" (verbose? #t)]
       #:args
