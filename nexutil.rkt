@@ -42,12 +42,15 @@
     ((compose1 path/param-path last url-path) path)
     (file-name-from-path path)))
 
-(define (raster->geotiff src [dest (path-replace-suffix src ".tif")])
-  (system/out
-    "gdal_translate"
-    "-of GTiff -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=1 -co ZLEVEL=6"
-    (subdataset src)
-    dest))
+(define (raster->geotiffs src)
+  (for/list ([nband (in-list (raster-bands src))])
+    (system/out
+      "gdal_translate"
+      "-of GTiff -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=1 -co ZLEVEL=6"
+      "-a_srs EPSG:4326 -b"
+      nband
+      (raster-subdataset src)
+      (path-replace-suffix (raster-path src) (format "_b~a.tif" nband)))))
 
 (define (monthly->annual src [dest (path-replace-suffix src "_ann.nc")])
   (system/out "ncra -OD 1 -L6 -d time,,,12,12 --mro" src dest))
@@ -167,10 +170,12 @@
 
 (define (run-workers tasks nworkers)
   (define (group-paths paths) (group-by trim-dates (map path->string paths)))
-  (let ([ncfiles (pool-map concat-netcdf
-                           (group-paths (pool-map monthly->annual tasks #:workers nworkers))
+  (let ([ncpaths (pool-map concat-netcdf
+                           (group-paths (pool-map monthly->annual
+                                                  tasks
+                                                  #:workers nworkers))
                            #:workers 2)])
-    (pool-map raster->geotiff ncfiles #:workers nworkers)))
+    (pool-map raster->geotiffs ncpaths #:workers nworkers)))
 
 (define (put-gdal-env path)
   (let ([dirs (hash 'PATH "bin"
