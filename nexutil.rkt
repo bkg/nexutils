@@ -175,7 +175,9 @@
                                                   tasks
                                                   #:workers nworkers))
                            #:workers 2)])
-    (pool-map raster->geotiffs ncpaths #:workers nworkers)))
+    (pool-map raster->geotiffs
+              (map make-raster ncpaths)
+              #:workers nworkers)))
 
 (define (put-gdal-env path)
   (let ([dirs (hash 'PATH "bin"
