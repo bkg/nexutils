@@ -78,12 +78,17 @@
     (define (quantile p) (vector-ref vsort (exact-ceiling (sub1 (* p vlen)))))
     (map quantile plst)))
 
+(define (vector-extrema vect)
+  (let ([v (vector-ref vect 0)])
+    (for/fold ([extrema (cons v v)])
+              ([val (in-vector vect 1 #f)])
+      (cons (min val (car extrema))
+            (max val (cdr extrema))))))
+
 ;; Returns a normalized vector stretched to a new min/max.
-(define (vector-normalize vect [min+max #f] [limits '(0 255)])
-  (match-let ([(list vmin vmax)
-               (or min+max (list (vector-argmin identity vect)
-                                 (vector-argmax identity vect)))]
-              [(list new-min new-max) limits])
+(define (vector-normalize vect [min+max #f] [new-min+max '(0 255)])
+  (match-let ([(list vmin vmax) (or min+max (vector-extrema vect))]
+              [(list new-min new-max) new-min+max])
     (let ([range-scale (exact->inexact (/ (- new-max new-min)
                                           (- vmax vmin)))])
       (for/vector ([v (in-vector vect)])
