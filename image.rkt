@@ -79,14 +79,16 @@
     (map quantile plst)))
 
 ;; Returns a normalized vector stretched to a new min/max.
-(define (vector-normalize vect [vmin/max #f] [nmin/max '(0 255)])
-  (match-let ([(list vmin vmax) (or vmin/max
-                                    (list (vector-argmin identity vect)
-                                          (vector-argmax identity vect)))]
-              [(list new-min new-max) nmin/max])
-    (let ([range-scale (exact->inexact (/ (- new-max new-min) (- vmax vmin)))])
+(define (vector-normalize vect [min+max #f] [limits '(0 255)])
+  (match-let ([(list vmin vmax)
+               (or min+max (list (vector-argmin identity vect)
+                                 (vector-argmax identity vect)))]
+              [(list new-min new-max) limits])
+    (let ([range-scale (exact->inexact (/ (- new-max new-min)
+                                          (- vmax vmin)))])
       (for/vector ([v (in-vector vect)])
-        (limit (exact-floor (* (exact->inexact (- v vmin)) range-scale))
+        (limit (fl->exact-integer
+                 (flfloor (fl* (->fl (- v vmin)) range-scale)))
                new-min
                new-max)))))
 
