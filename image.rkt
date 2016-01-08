@@ -2,7 +2,7 @@
 
 (require racket/class
          racket/draw
-         racket/function
+         racket/flonum
          racket/list
          racket/match
          racket/math
@@ -75,8 +75,8 @@
 (define (quantiles seq plst)
   (let* ([vsort (list->vector (sort (sequence->list seq) <))]
          [vlen (vector-length vsort)])
-    (define (quantile p) (vector-ref vsort (exact-ceiling (sub1 (* p vlen)))))
-    (map quantile plst)))
+    (for/list ([p (in-list plst)])
+      (vector-ref vsort (exact-ceiling (sub1 (* p vlen)))))))
 
 (define (vector-extrema vect)
   (let ([v (vector-ref vect 0)])
