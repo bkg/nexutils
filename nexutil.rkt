@@ -81,7 +81,7 @@
     (let* ([png-path (scale-byteraster src nband)]
            [bitmap (read-bitmap png-path)]
            [dest (path-replace-suffix png-path "c.png")])
-      (colorize-bitmap bitmap)
+      (colorize-bitmap! bitmap)
       (printft "Writing ~a ~a" nband dest)
       (send bitmap save-file dest 'png)
       dest)))

@@ -11,6 +11,9 @@
 
 (provide (all-defined-out))
 
+;; Value of masked/transparent pixels.
+(define mask-val 255)
+
 (define (limit v low high) (min (max v low) high))
 
 ;; Returns the color at a distance between two colors.
@@ -97,21 +100,27 @@
                new-min
                new-max)))))
 
+(define (grayscale-index argb-bytes)
+  (for/vector ([i (in-range 1 (bytes-length argb-bytes) 4)]
+               #:unless (eq? (bytes-ref argb-bytes i) mask-val))
+    i))
+
 ;; Returns modified bytes representing colorized image.
 (define (colorize-image-bytes! argb-bytes)
-  (let* ([gray-vect (for/vector ([b (in-bytes argb-bytes 1 #f 4)]
-                                 #:unless (eq? b 255)) b)]
+  (let* ([g-index (grayscale-index argb-bytes)]
+         [gray-vect
+           (for/vector #:length (vector-length g-index)
+             ([i (in-vector g-index)])
+             (bytes-ref argb-bytes i))]
          [q (quantiles (in-vector gray-vect 0 #f 8) '(.02 .98))]
-         [red-indices (for/vector ([i (in-range 1 (bytes-length argb-bytes) 4)]
-                                   #:unless (eq? (bytes-ref argb-bytes i) 255)) i)]
          [ncolors (sub1 (vector-length colors-haxby))])
-    (for ([i (in-vector red-indices)]
+    (for ([i (in-vector g-index)]
           [v (in-vector (vector-normalize gray-vect q '(0 254)))])
       (bytes-copy! argb-bytes i
                    (list->bytes (vector-ref colors-haxby (min v ncolors)))))))
 
 ;; Colorize a bitmap object from grayscale values.
-(define (colorize-bitmap bitmap)
+(define (colorize-bitmap! bitmap)
   (let* ([w (send bitmap get-width)]
          [h (send bitmap get-height)]
          [argb-bytes (make-bytes (* 4 w h))])
