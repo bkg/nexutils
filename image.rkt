@@ -14,6 +14,41 @@
 ;; Value of masked/transparent pixels.
 (define mask-val 255)
 
+;; A color table created by Bill Haxby, Lamont-Doherty Earth Observatory.
+(define colors-haxby
+  '((10 0 121)
+    (40 0 150)
+    (20 5 175)
+    (0 10 200)
+    (0 25 212)
+    (0 40 224)
+    (26 102 240)
+    (13 129 248)
+    (25 175 255)
+    (50 190 255)
+    (68 202 255)
+    (97 225 240)
+    (106 235 225)
+    (124 235 200)
+    (138 236 174)
+    (172 245 168)
+    (205 255 162)
+    (223 245 141)
+    (240 236 121)
+    (247 215 104)
+    (255 189 87)
+    (255 160 69)
+    (244 117 75)
+    (238 80 78)
+    (255 90 90)
+    (255 124 124)
+    (255 158 158)
+    (245 179 174)
+    (255 196 196)
+    (255 215 215)
+    (255 235 235)
+    (255 254 253)))
+
 ;; Returns the color at a distance between two colors.
 (define (interpolate-color c1 c2 t)
   (for/list ([ch1 (in-list c1)]
@@ -33,44 +68,6 @@
                       (for/list ([c1 (in-list colors)]
                                  [c2 (in-list (cdr colors))])
                         (linear-gradient c1 c2 steps))))))
-
-;; A color table created by Bill Haxby, Lamont-Doherty Earth Observatory.
-(define colors-haxby
-  (list->vector
-    (multilinear-gradient
-      '((10 0 121)
-        (40 0 150)
-        (20 5 175)
-        (0 10 200)
-        (0 25 212)
-        (0 40 224)
-        (26 102 240)
-        (13 129 248)
-        (25 175 255)
-        (50 190 255)
-        (68 202 255)
-        (97 225 240)
-        (106 235 225)
-        (124 235 200)
-        (138 236 174)
-        (172 245 168)
-        (205 255 162)
-        (223 245 141)
-        (240 236 121)
-        (247 215 104)
-        (255 189 87)
-        (255 160 69)
-        (244 117 75)
-        (238 80 78)
-        (255 90 90)
-        (255 124 124)
-        (255 158 158)
-        (245 179 174)
-        (255 196 196)
-        (255 215 215)
-        (255 235 235)
-        (255 254 253))
-      255)))
 
 ;; Returns a list of percentiles for a sequence.
 (define (quantiles seq plst)
@@ -118,11 +115,12 @@
                ([i (in-vector idx)])
                (bytes-ref argb-bytes i))]
          [vs (vector-stretch gs)]
-         [ncolors (sub1 (vector-length colors-haxby))])
+         [colors (list->vector (multilinear-gradient colors-haxby 255))]
+         [ncolors (sub1 (vector-length colors))])
     (for ([i (in-vector idx)]
           [v (in-vector vs)])
       (bytes-copy! argb-bytes i
-                   (list->bytes (vector-ref colors-haxby (min v ncolors)))))))
+                   (list->bytes (vector-ref colors (min v ncolors)))))))
 
 ;; Colorize a bitmap object from grayscale values.
 (define (colorize-bitmap! bitmap)
