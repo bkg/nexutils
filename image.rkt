@@ -14,22 +14,20 @@
 ;; Value of masked/transparent pixels.
 (define mask-val 255)
 
-(define (limit v low high) (min (max v low) high))
-
 ;; Returns the color at a distance between two colors.
-(define (interpolate-color x c1 c2)
+(define (interpolate-color c1 c2 t)
   (for/list ([ch1 (in-list c1)]
              [ch2 (in-list c2)])
-    (limit (floor (+ ch1 (* x (- ch2 ch1)))) 0 255)))
+    (floor (+ ch1 (* t (- ch2 ch1))))))
 
 ;; Returns a list of two interpolated colors using n steps.
 (define (linear-gradient start finish [n 10])
-  (for/list ([t (in-range n)])
-    (interpolate-color (/ t (sub1 n)) start finish)))
+  (for/list ([i (in-range n)])
+    (interpolate-color start finish (/ i n))))
 
 ;; Returns a multicolor linear gradient as a list of rgb values.
 (define (multilinear-gradient colors [n (* (length colors) 10)])
-  (let ([steps (/ n (sub1 (length colors)))])
+  (let ([steps (/ n (length colors))])
     (cons (car colors)
           (append-map cdr
                       (for/list ([c1 (in-list colors)]
@@ -88,34 +86,41 @@
       (cons (min val (car extrema))
             (max val (cdr extrema))))))
 
-;; Returns a normalized vector stretched to a new min/max.
-(define (vector-normalize vect [min+max #f] [new-min+max '(0 255)])
-  (match-let ([(list vmin vmax) (or min+max (vector-extrema vect))]
-              [(list new-min new-max) new-min+max])
-    (let ([range-scale (exact->inexact (/ (- new-max new-min)
-                                          (- vmax vmin)))])
-      (for/vector ([v (in-vector vect)])
-        (limit (fl->exact-integer
-                 (flfloor (fl* (->fl (- v vmin)) range-scale)))
-               new-min
-               new-max)))))
+(define (vector-clip vect amin amax)
+  (for/vector #:length (vector-length vect) ([v (in-vector vect)])
+    (cond [(< v amin) amin]
+          [(> v amax) amax]
+          [else v])))
 
-(define (grayscale-index argb-bytes)
+(define (vector-stretch vect)
+  (let ([q (quantiles (in-vector vect 0 #f 8) '(.02 .98))])
+    (vector-scale (apply vector-clip vect q) 0 254)))
+
+;; Returns a vector scaled to a new min/max.
+(define (vector-scale vect new-min new-max)
+  (match-let ([(cons vmin vmax) (vector-extrema vect)])
+    (let ([factor (exact->inexact (/ (- new-max new-min)
+                                     (- vmax vmin)))])
+      (for/vector #:length (vector-length vect) ([v (in-vector vect)])
+        (fl->exact-integer
+          (flround (fl+ (fl* (->fl (- v vmin)) factor)
+                        (->fl new-min))))))))
+
+(define (unmasked-index argb-bytes)
   (for/vector ([i (in-range 1 (bytes-length argb-bytes) 4)]
                #:unless (eq? (bytes-ref argb-bytes i) mask-val))
     i))
 
 ;; Returns modified bytes representing colorized image.
 (define (colorize-image-bytes! argb-bytes)
-  (let* ([g-index (grayscale-index argb-bytes)]
-         [gray-vect
-           (for/vector #:length (vector-length g-index)
-             ([i (in-vector g-index)])
-             (bytes-ref argb-bytes i))]
-         [q (quantiles (in-vector gray-vect 0 #f 8) '(.02 .98))]
+  (let* ([idx (unmasked-index argb-bytes)]
+         [gs (for/vector #:length (vector-length idx)
+               ([i (in-vector idx)])
+               (bytes-ref argb-bytes i))]
+         [vs (vector-stretch gs)]
          [ncolors (sub1 (vector-length colors-haxby))])
-    (for ([i (in-vector g-index)]
-          [v (in-vector (vector-normalize gray-vect q '(0 254)))])
+    (for ([i (in-vector idx)]
+          [v (in-vector vs)])
       (bytes-copy! argb-bytes i
                    (list->bytes (vector-ref colors-haxby (min v ncolors)))))))
 
